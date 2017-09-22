@@ -61,3 +61,12 @@ _site
 Gemfile.lock
 .DS_Store
 documents
+
+# Results
+exploration_data
+
+# Temp files
+wekapy_data
+
+# Input
+apks
