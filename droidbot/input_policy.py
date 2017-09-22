@@ -1,9 +1,12 @@
+import os
+from shutil import move
 import logging
 import random
 from abc import abstractmethod
 
-from input_event import KeyEvent, IntentEvent, TouchEvent, ManualEvent
+from input_event import KeyEvent, IntentEvent, TouchEvent, UIEvent, ManualEvent
 from utg import UTG
+from model_based import ModelBased
 
 # Max number of restarts
 MAX_NUM_RESTARTS = 5
@@ -26,6 +29,7 @@ POLICY_GREEDY_BFS = "bfs_greedy"
 POLICY_MANUAL = "manual"
 POLICY_MONKEY = "monkey"
 POLICY_NONE = "none"
+POLICY_RANDOM = "random"
 
 
 class InputInterruptedException(Exception):
@@ -51,6 +55,7 @@ class InputPolicy(object):
         count = 0
         while input_manager.enabled and count < input_manager.event_count:
             try:
+                self.logger.info("sending event nr %d" % count)
                 # make sure the first event is go to HOME screen
                 # the second event is to start the app
                 if count == 0:
@@ -485,3 +490,136 @@ class ManualPolicy(UtgBasedInputPolicy):
             return IntentEvent(intent=start_app_intent)
         else:
             return ManualEvent()
+
+
+class UtgRandomWidgetPolicy(UtgBasedInputPolicy):
+    """
+    select random widget strategy
+    """
+
+    def __init__(self, device, app, random_input):
+        super(UtgRandomWidgetPolicy, self).__init__(device, app, random_input)
+        self.logger = logging.getLogger(self.__class__.__name__)
+
+        self.__nav_num_steps = -1
+        self.__num_restarts = 0
+        self.__num_steps_outside = 0
+        self.__event_trace = ""
+        self.__missed_states = set()
+
+    def generate_event_based_on_utg(self):
+        """
+        generate an event based on current UTG
+        @return: InputEvent
+        """
+        current_state = self.current_state
+        if current_state.state_str in self.__missed_states:
+            self.__missed_states.remove(current_state.state_str)
+
+        if current_state.get_app_activity_depth(self.app) < 0:
+            # If the app is not in the activity stack
+            start_app_intent = self.app.get_start_intent()
+
+            if self.__event_trace.endswith(EVENT_FLAG_START_APP + EVENT_FLAG_STOP_APP) \
+                    or self.__event_trace.endswith(EVENT_FLAG_START_APP):
+                self.__num_restarts += 1
+            else:
+                self.__num_restarts = 0
+
+            if self.__num_restarts > MAX_NUM_RESTARTS:
+                # If the app had been restarted too many times, abort
+                msg = "The app had been restarted too many times."
+                self.logger.info(msg)
+                raise InputInterruptedException(msg)
+            else:
+                # Start the app
+                self.__event_trace += EVENT_FLAG_START_APP
+                self.logger.info("Trying to start the app...")
+                return IntentEvent(intent=start_app_intent)
+
+        elif current_state.get_app_activity_depth(self.app) > 0:
+            # If the app is in activity stack but is not in foreground
+            self.__num_steps_outside += 1
+
+            if self.__num_steps_outside > MAX_NUM_STEPS_OUTSIDE:
+                # If the app has not been in foreground for too long, try to go back
+                go_back_event = KeyEvent(name="BACK")
+                self.__event_trace += EVENT_FLAG_NAVIGATE
+                self.logger.info("Going back to the app...")
+                return go_back_event
+        else:
+            # If the app is in foreground
+            self.__num_steps_outside = 0
+
+        curr_screenshot = current_state.device.take_screenshot()
+        new_screenshot = str(curr_screenshot).replace("/temp/", "/all_screenshots/")
+
+        directory = os.path.dirname(new_screenshot)
+
+        if not os.path.exists(directory):
+            os.mkdir(directory)
+
+        move(curr_screenshot, new_screenshot)
+
+        # Get all possible input events
+        all_views = current_state.views
+        actionable_views = filter(lambda x : x["enabled"] and x["visible"] and
+                                             (x["clickable"] or x["scrollable"] or x["checkable"] or x["long_clickable"]),
+                                  all_views)
+
+        items = []
+        for view in actionable_views:
+            data = {"class": view["class"]}
+
+            if view["parent"] >= 0:
+                data["parent"] = all_views[view["parent"]]["class"]
+            else:
+                data["parent"] = "none"
+
+            if len(view["children"]) > 1:
+                data["children2"] = all_views[view["children"][1]]["class"]
+            else:
+                data["children2"] = "none"
+
+            if len(view["children"]) > 0:
+                data["children1"] = all_views[view["children"][0]]["class"]
+            else:
+                data["children1"] = "none"
+
+            items.append(data)
+
+        predictions = ModelBased.classify(items)
+        selected_idx = ModelBased.select(predictions)
+
+        possible_events = current_state.get_possible_input()
+
+        if len(possible_events) > 0:
+            # If it was not possible to classify fall back to purely random strategy
+            if selected_idx >= 0:
+                selected_widget = actionable_views[selected_idx]
+                chance = random.random()
+
+                tmp_events = [x
+                              for x in possible_events
+                              if ((not isinstance(x, UIEvent)) and (chance < 0.2)) or
+                                 (isinstance(x, UIEvent) and UtgRandomWidgetPolicy.are_equal(x.view, selected_widget))]
+
+                if len(tmp_events) > 0:
+                    possible_events = tmp_events
+
+            random.shuffle(possible_events)
+            self.logger.info("Trying a random event.")
+            self.__event_trace += EVENT_FLAG_EXPLORE
+            input_event = possible_events[0]
+            return input_event
+
+        # If couldn't find a exploration target, stop the app
+        stop_app_intent = self.app.get_stop_intent()
+        self.logger.info("Cannot find an exploration target. Trying to restart app...")
+        self.__event_trace += EVENT_FLAG_STOP_APP
+        return IntentEvent(intent=stop_app_intent)
+
+    @staticmethod
+    def are_equal(view1, view2):
+        return (view1["signature"] == view2["signature"]) and\
+               (view1["bounds"] == view2["bounds"])

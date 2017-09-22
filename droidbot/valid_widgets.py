@@ -1,0 +1,156 @@
+import editdistance
+
+valid_widgets = [
+    'ImageView',
+    'TextView',
+    'Button',
+    'ImageButton',
+    'LinearLayout',
+    'Spinner',
+    'SeekBar',
+    'SwitchCompat',
+    'FrameLayout',
+    'RecyclerView',
+    'Chronometer',
+    'DateTimeView',
+    'RelativeLayout',
+    'ListMenuItemView',
+    'FitWindowsLinearLayout',
+    'ActionBarContextView',
+    'ActionMenuView',
+    'ActionMenuItemView',
+    'item',
+    'AppBarLayout',
+    'CoordinatorLayout',
+    'ProgressBar',
+    'ScrollView',
+    'View',
+    'NavigationMenuItemView',
+    'view',
+    'BaselineLayout',
+    'TableRow',
+    'TableLayout',
+    'CardView',
+    'menu',
+    'ContentFrameLayout',
+    'DialogTitle',
+    'Space',
+    'ButtonBarLayout',
+    'ActionBarOverlayLayout',
+    'ViewStubCompat',
+    'FitWindowsFrameLayout',
+    'RadioButton',
+    'CheckBox',
+    'ExpandedMenuView',
+    'NestedScrollView',
+    'ListView',
+    'Toolbar',
+    'ActionBarContainer',
+    'TabLayout',
+    'ViewPager',
+    'WebView',
+    'EditText',
+    'RadioGroup',
+    'CheckableImageButton',
+    'ViewStub',
+    'CheckedTextView',
+    'NavigationMenuView',
+    'TabWidget',
+    'ToggleButton',
+    'SurfaceView',
+    'HorizontalScrollView',
+    'ExpandableListView',
+    'AppCompatImageView',
+    'Space',
+    'AppCompatRadioButton',
+    'RatingBar',
+    'SwipeRefreshLayout',
+    'TextureView',
+    'AppCompatSpinner',
+    'AutoCompleteTextView',
+    'FloatingActionButton',
+    'ViewFlipper',
+    'TintImageView',
+    'ListMenuItemView',
+    'FitWindowsLinearLayout',
+    'ActionBarContextView',
+    'ActionMenuItemView',
+    'GridView',
+    'TimePicker',
+    'Switch',
+    'group',
+    'DrawerLayout',
+    'PagerTabStrip',
+    'TextSwitcher',
+    'ContentFrameLayout',
+    'DialogTitle',
+    'ExpandedMenuView',
+    'FitWindowsFrameLayout',
+    'ViewStubCompat',
+    'ActionBarOverlayLayout',
+    'ActionBarContainer',
+    'ActionMenuView',
+    'LinearLayoutICS',
+    'Preference',
+    'PreferenceCategory',
+    'ListPreference',
+    'PreferenceScreen',
+    'ImageSwitcher',
+    'DatePicker',
+    'ButtonBarLayout',
+    'NumberPicker',
+    'AlertDialogLayout',
+    'TextViewWrapper',
+    'UnPressableLinearLayout',
+    'AppCompatCheckBox',
+    'AbsoluteLayout',
+    'ViewSwitcher',
+    'ActionBarView',
+    'TabHost',
+    'SearchView',
+    'VideoView',
+    'TextInputLayout',
+    'AppCompatButton',
+    'AppCompatTextView',
+    'CollapsingToolbarLayout',
+    'NavigationView',
+    'PreferenceImageView',
+    'Gallery',
+    'CheckBoxPreference',
+    'GridLayout',
+    'ViewAnimator',
+    'LinearLayoutCompat',
+    'ViewPager',
+    'CalendarView',
+    'Space',
+    'GridLayout',
+    'SlidingDrawer',
+    'PagerTitleStrip',
+    'FragmentTabHost',
+    'AnalogClock']
+
+
+def find_closest_view(target):
+    distance = 9999999
+    closest = ""
+
+    for compare_object in valid_widgets:
+        current_distance = editdistance.eval(compare_object, target)
+        if current_distance < distance:
+            distance = current_distance
+            closest = compare_object
+
+    return closest
+
+
+def get_refined_type(class_name):
+    if class_name == "none":
+        return "none"
+
+    parts = class_name.split(".")
+    ref_type = "none"
+
+    if len(parts) > 0:
+        ref_type = parts[-1].lower()
+
+    return find_closest_view(ref_type).lower()

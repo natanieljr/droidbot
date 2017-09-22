@@ -5,10 +5,10 @@ import time
 
 from input_event import EventLog
 from input_policy import UtgBasedInputPolicy, UtgNaiveSearchPolicy, UtgGreedySearchPolicy, \
-                         ManualPolicy, \
+                         UtgRandomWidgetPolicy, ManualPolicy, \
                          POLICY_NAIVE_DFS, POLICY_GREEDY_DFS, \
                          POLICY_NAIVE_BFS, POLICY_GREEDY_BFS, \
-                         POLICY_MANUAL, POLICY_MONKEY, POLICY_NONE
+                         POLICY_MANUAL, POLICY_MONKEY, POLICY_NONE, POLICY_RANDOM
 
 DEFAULT_POLICY = POLICY_GREEDY_DFS
 DEFAULT_EVENT_INTERVAL = 1
@@ -72,6 +72,8 @@ class InputManager(object):
             input_policy = UtgGreedySearchPolicy(device, app, self.random_input, self.policy_name)
         elif self.policy_name == POLICY_MANUAL:
             input_policy = ManualPolicy(device, app)
+        elif self.policy_name == POLICY_RANDOM:
+            input_policy = UtgRandomWidgetPolicy(device, app, self.random_input)
         else:
             self.logger.warning("No valid input policy specified. Using policy \"none\".")
             input_policy = None
