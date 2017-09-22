@@ -40,5 +40,5 @@ setup(
         ],
     },
     # androidviewclient doesnot support pip install, thus you should install it with easy_install
-    install_requires=['androguard', 'networkx', 'Pillow'],
+    install_requires=['androguard', 'networkx', 'Pillow', 'wekapy'],
 )
