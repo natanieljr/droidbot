@@ -35,6 +35,7 @@ def parse_args():
                              '  \"%s\" -- Explore UI using a greedy depth-first strategy;\n'
                              '  \"%s\" -- Explore UI using a naive breadth-first strategy;\n'
                              '  \"%s\" -- Explore UI using a greedy breadth-first strategy;\n'
+                             '  \"%s\" -- Explore UI using a random strategy;\n'
                              %
                              (
                                  input_policy.POLICY_NONE,
@@ -43,6 +44,7 @@ def parse_args():
                                  input_policy.POLICY_GREEDY_DFS,
                                  input_policy.POLICY_NAIVE_BFS,
                                  input_policy.POLICY_GREEDY_DFS,
+                                 input_policy.POLICY_RANDOM
                              ))
     parser.add_argument("-script", action="store", dest="script_path",
                         help="Use a script to customize input for certain states.")

@@ -63,7 +63,7 @@ Gemfile.lock
 documents
 
 # Results
-exploration_data
+droidbot/dfs_random
 
 # Temp files
 wekapy_data
