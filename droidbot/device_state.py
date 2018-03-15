@@ -1,6 +1,5 @@
 import math
 import os
-import json
 import utils
 from input_event import KeyEvent, TouchEvent, LongTouchEvent, ScrollEvent
 
@@ -82,21 +81,12 @@ class DeviceState(object):
         return utils.md5(state_str_raw)
 
     def __get_state_str_raw(self):
-        ret_str = self.foreground_activity
-        old_bounds = ""
-        view_bounds = ""
-        view_signature = ""
+        view_signatures = set()
         for view in self.views:
-            # always select the most inner one when
-            # there are same bounds
-            view_bounds = json.dumps(view['bounds'])
             view_signature = DeviceState.__get_view_signature(view)
-            if old_bounds != view_bounds:
-                if len(old_bounds):
-                    ret_str += "{%s,%s}" % (view_signature, old_bounds)
-                old_bounds = view_bounds
-        ret_str += "{%s,%s}" % (view_signature, view_bounds)
-        return ret_str
+            if view_signature:
+                view_signatures.add(view_signature)
+        return "%s{%s}" % (self.foreground_activity, ",".join(sorted(view_signatures)))
 
     def __get_content_free_state_str(self):
         view_signatures = set()
@@ -138,7 +128,7 @@ class DeviceState(object):
                 else:
                     output_dir = os.path.join(self.device.output_dir, "states")
             if not os.path.exists(output_dir):
-                os.mkdir(output_dir)
+                os.makedirs(output_dir)
             dest_state_json_path = "%s/state_%s.json" % (output_dir, self.tag)
             if self.device.adapters[self.device.minicap]:
                 dest_screenshot_path = "%s/screen_%s.jpg" % (output_dir, self.tag)
@@ -164,7 +154,7 @@ class DeviceState(object):
                 else:
                     output_dir = os.path.join(self.device.output_dir, "views")
             if not os.path.exists(output_dir):
-                os.mkdir(output_dir)
+                os.makedirs(output_dir)
             view_str = view_dict['view_str']
             if self.device.adapters[self.device.minicap]:
                 view_file_path = "%s/view_%s.jpg" % (output_dir, view_str)

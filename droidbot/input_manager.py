@@ -27,7 +27,7 @@ class InputManager(object):
 
     def __init__(self, device, app, policy_name, random_input,
                  event_count, event_interval,
-                 script_path=None, profiling_method=None):
+                 script_path=None, profiling_method=None, master=None):
         """
         manage input event sent to the target device
         :param device: instance of Device
@@ -57,10 +57,10 @@ class InputManager(object):
             from input_script import DroidBotScript
             self.script = DroidBotScript(script_dict)
 
-        self.policy = self.get_input_policy(device, app)
+        self.policy = self.get_input_policy(device, app, master)
         self.profiling_method = profiling_method
 
-    def get_input_policy(self, device, app):
+    def get_input_policy(self, device, app, master):
         input_policy = None
         if self.policy_name == POLICY_NONE:
             input_policy = None
@@ -79,6 +79,7 @@ class InputManager(object):
             input_policy = None
         if isinstance(input_policy, UtgBasedInputPolicy):
             input_policy.script = self.script
+            input_policy.master = master
         return input_policy
 
     def add_event(self, event):
@@ -117,7 +118,7 @@ class InputManager(object):
             elif self.policy_name == POLICY_MONKEY:
                 throttle = self.event_interval * 1000
                 monkey_cmd = "adb -s %s shell monkey %s --ignore-crashes --ignore-security-exceptions" \
-                             " --throttle %d %d" % \
+                             " --throttle %d -v %d" % \
                              (self.device.serial,
                               "" if self.app.get_package_name() is None else "-p " + self.app.get_package_name(),
                               throttle,
@@ -125,8 +126,11 @@ class InputManager(object):
                 self.monkey = subprocess.Popen(monkey_cmd.split(),
                                                stdout=subprocess.PIPE,
                                                stderr=subprocess.PIPE)
-                while self.enabled:
-                    time.sleep(1)
+                for monkey_out_line in iter(self.monkey.stdout.readline, ''):
+                    self.logger.info(monkey_out_line)
+                # may be disturbed from outside
+                if self.monkey is not None:
+                    self.monkey.wait()
             elif self.policy_name == POLICY_MANUAL:
                 self.device.start_app(self.app)
                 while self.enabled:
@@ -147,7 +151,8 @@ class InputManager(object):
         stop sending event
         """
         if self.monkey:
-            self.monkey.terminate()
+            if self.monkey.returncode is None:
+                self.monkey.terminate()
             self.monkey = None
             pid = self.device.get_app_pid("com.android.commands.monkey")
             if pid is not None:
